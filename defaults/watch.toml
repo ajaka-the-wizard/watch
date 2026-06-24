@@ -1,0 +1,4 @@
+command = "git status"
+watch = ["py", "ts", "rs"]
+dir = "."
+verbose = true
