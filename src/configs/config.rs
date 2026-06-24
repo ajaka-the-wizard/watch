@@ -1,4 +1,4 @@
-use std::{env, fs, io::BufReader, path::PathBuf, str::FromStr};
+use std::{env, fs, io::BufReader, path::PathBuf};
 
 use anyhow::{Context, Ok, Result, bail};
 use serde::{Deserialize, Serialize};
@@ -36,7 +36,8 @@ impl Configs {
 
         let cmd = Self::parse_user_command(config.command)
             .with_context(|| "You haven't configured the command to run")?
-            .unwrap();
+            .ok_or_else(|| anyhow::anyhow!("You haven't configured the command to run"))?;
+
         let path = resolve_directory(config.dir);
 
         Ok(Configs {
@@ -72,12 +73,16 @@ impl Configs {
         return Ok(config);
     }
     fn detect_file() -> Result<FileChosen> {
-        let exists = check_existence("watch.toml");
-        if exists {
+        let toml_exists = check_existence("watch.toml");
+        let json_exists = check_existence("watch.json");
+        if toml_exists && json_exists {
+            bail!("Both watch.toml and watch.json was found, keep one")
+        }
+
+        if toml_exists {
             return Ok(FileChosen::TOML);
         };
-        let exists = check_existence("watch.json");
-        if exists {
+        if json_exists {
             return Ok(FileChosen::JSON);
         };
         bail!("No Supported config type is found")
@@ -99,16 +104,13 @@ impl Configs {
 
 #[inline(always)]
 fn resolve_directory(dir: Option<String>) -> PathBuf {
-    if let Some(d) = dir
-        && d != ".".to_string()
-    {
-        return PathBuf::from_str(&d)
-            .with_context(|| "The provided dir is not valid")
-            .unwrap();
+    let p = if let Some(d) = dir.as_deref().filter(|&d| d != ".") {
+        PathBuf::from(d)
+    } else {
+        env::current_dir()
+            .expect("Could not automatically resolve the CWD, please set it explicitly")
     };
-    env::current_dir()
-        .with_context(|| "Couldn't automatically resolve the CWD, please set it explicitly")
-        .unwrap()
+    fs::canonicalize(&p).expect(&format!("Failed to resolve absolute path for: {:?}", p))
 }
 
 #[inline(always)]

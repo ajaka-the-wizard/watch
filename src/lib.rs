@@ -5,7 +5,9 @@ mod configs;
 mod inner;
 
 pub fn watch() -> Result<()> {
-    Args::check()?;
-    let configs = Configs::load_file()?;
-    Ok(inner::Engine::init(configs).start()?)
+    if !Args::check()? {
+        let configs = Configs::load_file()?;
+        return Ok(inner::Engine::init(configs).start()?);
+    };
+    Ok(())
 }

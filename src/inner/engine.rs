@@ -6,6 +6,7 @@ use std::{
         atomic::{AtomicBool, Ordering},
         mpsc::{self, Receiver, RecvTimeoutError, Sender},
     },
+    thread::JoinHandle,
     time::Duration,
 };
 
@@ -21,15 +22,20 @@ use crate::{
 pub struct Engine {
     config: Configs,
     sender: Sender<WatchEvents>,
+    executor: Option<JoinHandle<()>>,
 }
 
 impl Engine {
     pub fn init(config: Configs) -> Self {
         let (tx, rx): (Sender<WatchEvents>, Receiver<WatchEvents>) = mpsc::channel();
-        Executor::init(config.clone(), rx).execute();
-        Self { config, sender: tx }
+        let executor = Executor::init(config.clone(), rx).execute();
+        Self {
+            config,
+            sender: tx,
+            executor: Some(executor),
+        }
     }
-    pub fn start(&self) -> Result<()> {
+    pub fn start(&mut self) -> Result<()> {
         let path = &self.config.dir;
         let shutdown = self.install_shutdown_handler()?;
         match env::set_current_dir(path) {
@@ -63,8 +69,12 @@ impl Engine {
         }
 
         let _ = self.sender.send(WatchEvents::Quit);
+        if let Some(h) = self.executor.take() {
+            h.join().expect("Executor panicked")
+        }
         Ok(())
     }
+
     fn install_shutdown_handler(&self) -> Result<Arc<AtomicBool>> {
         let shutdown = Arc::new(AtomicBool::new(false));
         let handler_shutdown = Arc::clone(&shutdown);

@@ -6,7 +6,7 @@ use std::{
     cell::RefCell,
     process::Command,
     sync::mpsc::Receiver,
-    thread,
+    thread::{self, JoinHandle},
 };
 
 pub enum WatchEvents {
@@ -28,7 +28,7 @@ impl Executor {
             receiver: r,
         }
     }
-    pub fn execute(self) {
+    pub fn execute(self) -> JoinHandle<()> {
         thread::spawn(move || {
             for e in &self.receiver {
                 match e {
@@ -44,7 +44,7 @@ impl Executor {
                 }
             }
             self.stop_child();
-        });
+        })
     }
     fn run(&self) -> Result<()> {
         self.stop_child();

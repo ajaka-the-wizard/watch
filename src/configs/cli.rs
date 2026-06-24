@@ -1,7 +1,6 @@
-use std::{fs, process};
-
 use anyhow::{Context, Result};
 use clap::{Args as ClapArgs, Parser, Subcommand};
+use std::fs;
 
 const DEFAULT_JSON_CONFIG_EXAMPLE: &str = include_str!("../../defaults/watch.json");
 const DEFAULT_TOML_CONFIG_EXAMPLE: &str = include_str!("../../defaults/watch.toml");
@@ -28,7 +27,8 @@ pub struct InitArgs {
 }
 
 impl Args {
-    pub fn check() -> Result<()> {
+    pub fn check() -> Result<bool> {
+        let mut checked = false;
         let args = Self::parse();
         if let Some(Command::Init(init)) = args.command {
             let (file_name, contents) = if init.toml {
@@ -37,10 +37,14 @@ impl Args {
                 ("watch.json", DEFAULT_JSON_CONFIG_EXAMPLE)
             };
 
-            fs::write(file_name, contents)
+            fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(file_name)
+                .and_then(|mut file| std::io::Write::write_all(&mut file, contents.as_bytes()))
                 .with_context(|| format!("Failed to write example config file '{}'", file_name))?;
-            process::exit(0);
+            checked = true
         };
-        Ok(())
+        Ok(checked)
     }
 }
