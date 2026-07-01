@@ -108,7 +108,7 @@ fn resolve_directory(dir: Option<String>) -> Result<PathBuf> {
         PathBuf::from(d)
     } else {
         env::current_dir()
-            .expect("Could not automatically resolve the CWD, please set it explicitly")
+            .with_context(||"Could not automatically resolve the CWD, please set it explicitly")?
     };
     fs::canonicalize(&p).with_context(|| format!("Failed to resolve absolute path for: {:?}", p))
 }
