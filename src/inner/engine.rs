@@ -10,7 +10,7 @@ use std::{
     time::Duration,
 };
 
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, anyhow};
 
 use notify_debouncer_mini::{DebounceEventResult, DebouncedEvent, new_debouncer};
 
@@ -70,7 +70,7 @@ impl Engine {
 
         let _ = self.sender.send(WatchEvents::Quit);
         if let Some(h) = self.executor.take() {
-            h.join().expect("Executor panicked")
+            h.join().map_err(|_| anyhow!("Executor panicked"))?
         }
         Ok(())
     }

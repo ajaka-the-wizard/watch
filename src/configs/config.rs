@@ -38,7 +38,7 @@ impl Configs {
             .with_context(|| "You haven't configured the command to run")?
             .ok_or_else(|| anyhow::anyhow!("You haven't configured the command to run"))?;
 
-        let path = resolve_directory(config.dir);
+        let path = resolve_directory(config.dir)?;
 
         Ok(Configs {
             cmd,
@@ -103,14 +103,14 @@ impl Configs {
 }
 
 #[inline(always)]
-fn resolve_directory(dir: Option<String>) -> PathBuf {
+fn resolve_directory(dir: Option<String>) -> Result<PathBuf> {
     let p = if let Some(d) = dir.as_deref().filter(|&d| d != ".") {
         PathBuf::from(d)
     } else {
         env::current_dir()
             .expect("Could not automatically resolve the CWD, please set it explicitly")
     };
-    fs::canonicalize(&p).expect(&format!("Failed to resolve absolute path for: {:?}", p))
+    fs::canonicalize(&p).with_context(|| format!("Failed to resolve absolute path for: {:?}", p))
 }
 
 #[inline(always)]
