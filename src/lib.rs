@@ -7,7 +7,7 @@ mod inner;
 pub fn watch() -> Result<()> {
     if !Args::check()? {
         let configs = Configs::load_file()?;
-        return Ok(inner::Engine::init(configs).start()?);
+        return inner::Engine::init(configs).start();
     };
     Ok(())
 }
